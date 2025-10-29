@@ -1,21 +1,28 @@
 export type Book = {
-	id?: number
+	id: number
+	title: string
+	authorId: number
+	authorName?: string | null
+	isbn: string
+	publishedYear: number
+	description?: string | null
+	coverUrl?: string | null
+	categories?: string[]
+}
+
+export type BookSummary = {
+	id: number
+	title: string
+	year: number
+	isbn: string
+	authorId: number
+}
+
+export type CreateBookInput = {
 	title: string
 	authorId: number
 	isbn: string
 	publishedYear: number
-	description: string
-	coverUrl: string
+	description?: string | null
+	coverUrl?: string | null
 }
-
-/*{
-		id: 1,
-		title: "To Kill a Mockingbird",
-		authorId: 1,
-		isbn: "9780061120084",
-		publishedYear: 1960,
-		description:
-			"A gripping tale of racial injustice and childhood innocence in the American South.",
-		coverUrl: "https://covers.openlibrary.org/b/isbn/9780061120084-L.jpg",
-	},
-    */

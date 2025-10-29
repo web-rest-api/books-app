@@ -1,17 +1,17 @@
 import { User } from "lucide-react"
+import type { Author } from "../types/Authors"
 
 interface AuthorCardProps {
-	author: {
-		id: number
-		name: string
-		bio: string
-		birthYear: number
-		country: string
-	}
+	author: Author
 	bookCount: number
 }
 
 const AuthorCard = ({ author, bookCount }: AuthorCardProps) => {
+	const countryLabel = author.country?.trim()
+	const birthLabel = author.birthYear ? `Born ${author.birthYear}` : null
+	const meta = [countryLabel, birthLabel].filter(Boolean).join(" • ")
+	const bio = author.bio?.trim() || "No biography available."
+
 	return (
 		<div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-300">
 			<div className="flex items-center mb-4">
@@ -20,12 +20,10 @@ const AuthorCard = ({ author, bookCount }: AuthorCardProps) => {
 				</div>
 				<div>
 					<h3 className="text-xl font-bold text-gray-800">{author.name}</h3>
-					<p className="text-sm text-gray-500">
-						{author.country} • Born {author.birthYear}
-					</p>
+					{meta && <p className="text-sm text-gray-500">{meta}</p>}
 				</div>
 			</div>
-			<p className="text-sm text-gray-600 mb-3">{author.bio}</p>
+			<p className="text-sm text-gray-600 mb-3">{bio}</p>
 			<div className="text-sm text-blue-600 font-semibold">
 				{bookCount} {bookCount === 1 ? "book" : "books"} in collection
 			</div>

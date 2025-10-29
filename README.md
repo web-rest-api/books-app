@@ -2,11 +2,9 @@
 
 ## Project Overview
 
-This is a full-stack student project that demonstrates the integration of a React TypeScript frontend with a C# backend API. The application allows users to browse books and authors, with additional data enrichment from the Google Books API.
+This is a full-stack project that demonstrates the integration of a React TypeScript frontend with a C# backend API. The application allows users to browse books and authors, with additional data enrichment from the Google Books API.
 
-## Learning Objectives
-
-Students will learn:
+## Objectives
 
 - Building a React application with TypeScript
 - Component-based architecture and prop management
@@ -40,7 +38,7 @@ books-lists/
 
 ## Current Features
 
-### Phase 1: Static UI (Current)
+### Phase 1: Static UI (Complete)
 
 - ✅ Component-based architecture
 - ✅ Tab navigation between Books and Authors views
@@ -48,13 +46,14 @@ books-lists/
 - ✅ Responsive design with Tailwind CSS
 - ✅ Static mock data for development
 
-### Phase 2: API Integration (Next Steps)
+### Phase 2: API Integration (In Progress)
 
-- Create API service layer for C# backend
-- Integrate Google Books API for cover images and metadata
-- Implement React Context for state management
-- Add loading states and error handling
-- Connect frontend to student-built C# backend
+- ✅ Service layer for C# backend authors & books endpoints
+- ✅ Google Books API suggestions in the add-book form
+- ✅ Loading and error states for network requests
+- ✅ Custom hooks for consuming backend services
+- ⏳ Extract reusable loading/error components for consistency
+- ⏳ Document environment variables for local/hosted deployments
 
 ### Phase 3: Advanced Features (Future)
 
@@ -116,10 +115,10 @@ books-lists/
 
 ### API Integration
 
-- Create service layer for C# backend API
-- Integrate Google Books API for enriched data
-- Error handling and loading states
-- Proper async/await patterns
+- Service layer for C# backend API (authors, books, ISBN import)
+- Google Books API for enriched data and form autofill
+- Loading states, retry flows, and error handling
+- Proper async/await patterns with custom hooks
 
 ### User Interface
 

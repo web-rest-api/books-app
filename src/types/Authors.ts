@@ -1,17 +1,17 @@
+import type { BookSummary } from "./Book"
+
 export type Author = {
-	id?: number
+	id: number
 	name: string
-	bio: string
-	birthYear: number
-	country: string
+	bio?: string | null
+	birthYear?: number | null
+	country?: string | null
+	books?: BookSummary[]
 }
 
-/*
-{
-		id: 4,
-		name: "F. Scott Fitzgerald",
-		bio: "Francis Scott Key Fitzgerald was an American novelist and short story writer of the Jazz Age.",
-		birthYear: 1896,
-		country: "United States",
-	},
-*/
+export type CreateAuthorInput = {
+	name: string
+	bio?: string | null
+	birthYear?: number | null
+	country?: string | null
+}

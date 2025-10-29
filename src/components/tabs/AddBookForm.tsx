@@ -1,16 +1,20 @@
 import { useState, type FormEvent } from "react"
 import type { Author } from "../../types/Authors"
-import type { Book } from "../../types/Book"
+import type { CreateBookInput } from "../../types/Book"
+import {
+	searchBooksByTitle,
+	type GoogleBookSuggestion,
+} from "../../service/googleBooksService"
 
 
 interface AddBookFormProps {
 	authors: Author[]
-	onSubmit: (book: Book) => void
+	onSubmit: (book: CreateBookInput) => Promise<void> | void
 	onCancel?: () => void
 }
 
 const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
-	const [formData, setFormData] = useState<Book>({
+	const [formData, setFormData] = useState<CreateBookInput>({
 		title: "",
 		authorId: 0,
 		isbn: "",
@@ -19,7 +23,12 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 		coverUrl: "",
 	})
 
-	const [errors, setErrors] = useState<Partial<Record<keyof Book, string>>>({})
+	const [errors, setErrors] = useState<
+		Partial<Record<keyof CreateBookInput, string>>
+	>({})
+	const [isSearching, setIsSearching] = useState(false)
+	const [searchResults, setSearchResults] = useState<GoogleBookSuggestion[]>([])
+	const [, setIsbnNotFound] = useState(false)
 
 	const handleChange = (
 		e: React.ChangeEvent<
@@ -27,21 +36,89 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 		>
 	) => {
 		const { name, value } = e.target
+
+		// Update form data immediately (synchronously)
 		setFormData((prev) => ({
 			...prev,
 			[name]:
 				name === "authorId" || name === "publishedYear"
-					? parseInt(value) || 0
+					? (value === "" ? 0 : parseInt(value) || 0)
 					: value,
 		}))
+
 		// Clear error when user starts typing
-		if (errors[name as keyof Book]) {
-			setErrors((prev) => ({ ...prev, [name]: "" }))
+		const key = name as keyof CreateBookInput
+		if (errors[key]) {
+			setErrors((prev) => {
+				const next = { ...prev }
+				delete next[key]
+				return next
+			})
+			setIsbnNotFound(false)
+		}
+
+		// Search for books by title as user types (asynchronously)
+		if (name === "title" && value.length > 2) {
+			setIsSearching(true)
+			searchBooksByTitle(value)
+				.then((books) => {
+					setSearchResults(books)
+				})
+				.catch((error) => {
+					console.error("Error searching books:", error)
+					setSearchResults([])
+				})
+				.finally(() => {
+					setIsSearching(false)
+				})
+		} else if (name === "title" && value.length <= 2) {
+			setSearchResults([])
+		}
+	}
+
+	const handleSetBook = (book: GoogleBookSuggestion) => {
+		const foundAuthor = book.author
+			? authors.find((author) => author.name === book.author)
+			: undefined
+
+		setFormData((prev) => ({
+			...prev,
+			title: book.title || prev.title,
+			description: book.description ?? prev.description,
+			coverUrl:
+				book.coverUrl ??
+				(book.isbn13
+					? `https://covers.openlibrary.org/b/isbn/${book.isbn13}-L.jpg`
+					: prev.coverUrl),
+			publishedYear:
+				book.publishedYear ??
+				(book.publishedDate
+					? parseInt(book.publishedDate.substring(0, 4)) || prev.publishedYear
+					: prev.publishedYear),
+			isbn: book.isbn ?? book.isbn13 ?? prev.isbn,
+			authorId: foundAuthor?.id ?? prev.authorId,
+		}))
+
+		setSearchResults([])
+
+		if (book.author) {
+			if (!foundAuthor) {
+				setErrors((prev) => ({
+					...prev,
+					authorId: "No author found for this book. Please select manually.",
+				}))
+			} else {
+				setErrors((prev) => {
+					const next = { ...prev }
+					delete next.authorId
+					return next
+				})
+			}
 		}
 	}
 
 	const validate = (): boolean => {
-		const newErrors: Partial<Record<keyof Book, string>> = {}
+		const newErrors: Partial<Record<keyof CreateBookInput, string>> = {}
 
 		if (!formData.title.trim()) {
 			newErrors.title = "Title is required"
@@ -65,11 +142,11 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 			newErrors.publishedYear = "Please enter a valid publication year"
 		}
 
-		if (!formData.description.trim()) {
+		if (!formData.description?.trim()) {
 			newErrors.description = "Description is required"
 		}
 
-		if (!formData.coverUrl.trim()) {
+		if (!formData.coverUrl?.trim()) {
 			newErrors.coverUrl = "Cover URL is required"
 		} else if (!/^https?:\/\/.+/.test(formData.coverUrl)) {
 			newErrors.coverUrl =
@@ -83,9 +160,9 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 	const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault()
 
-		if (validate()) {
-			onSubmit(formData)
-			// Reset form after successful submission
+		if (!validate()) return
+
+		void Promise.resolve(onSubmit(formData)).then(() => {
 			setFormData({
 				title: "",
 				authorId: 0,
@@ -95,7 +172,7 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 				coverUrl: "",
 			})
 			setErrors({})
-		}
+		})
 	}
 
 	return (
@@ -104,7 +181,7 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 
 			<form onSubmit={handleSubmit} className="space-y-4">
 				{/* Title Input */}
-				<div>
+				<div className="relative">
 					<label
 						htmlFor="title"
 						className="block text-sm font-medium text-gray-700 mb-1"
@@ -122,6 +199,33 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 						}`}
 						placeholder="Enter book title"
 					/>
+					{/* Suggestions Dropdown */}
+					{(isSearching || searchResults.length > 0) && (
+						<div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-64 overflow-auto">
+							{isSearching && (
+								<div className="px-3 py-2 text-sm text-gray-500">Searching…</div>
+							)}
+							{!isSearching && searchResults.length === 0 && (
+								<div className="px-3 py-2 text-sm text-gray-500">No results</div>
+							)}
+							{!isSearching &&
+								searchResults.slice(0, 8).map((s, idx) => (
+									<button
+										key={`${s.isbn13 ?? s.title}-${idx}`}
+										type="button"
+										onClick={() => handleSetBook(s)}
+										className="w-full text-left px-3 py-2 hover:bg-gray-50"
+									>
+										<div className="font-medium text-gray-800 truncate">{s.title}</div>
+										<div className="text-xs text-gray-500 truncate">
+											{s.authors.join(", ")}
+											{s.publishedYear ? ` • ${s.publishedYear}` : ""}
+											{s.isbn13 ? ` • ISBN: ${s.isbn13}` : ""}
+										</div>
+									</button>
+								))}
+						</div>
+					)}
 					{errors.title && (
 						<p className="mt-1 text-sm text-red-600">{errors.title}</p>
 					)}
@@ -222,7 +326,7 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 					<textarea
 						id="description"
 						name="description"
-						value={formData.description}
+						value={formData.description ?? ""}
 						onChange={handleChange}
 						rows={4}
 						className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
@@ -247,7 +351,7 @@ const AddBookForm = ({ authors, onSubmit, onCancel }: AddBookFormProps) => {
 						type="url"
 						id="coverUrl"
 						name="coverUrl"
-						value={formData.coverUrl}
+						value={formData.coverUrl ?? ""}
 						onChange={handleChange}
 						className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
 							errors.coverUrl ? "border-red-500" : "border-gray-300"

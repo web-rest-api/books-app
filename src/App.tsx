@@ -1,56 +1,95 @@
-import { useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { BookOpen } from "lucide-react"
 import BookCard from "./components/BookCard"
 import AuthorCard from "./components/AuthorCard"
 import SearchBar from "./components/SearchBar"
-import { staticBooks, staticAuthors } from "./mockData/staticData"
 import AddAuthorForm from "./components/tabs/AddAuthorForm"
-import type { Author } from "./types/Authors"
 import AddBookForm from "./components/tabs/AddBookForm"
-import type { Book } from "./types/Book"
 
 import NavigationTabs from "./components/NavogationTabs"
+import { useAuthors } from "./hooks/useAuthors"
+import { useBooks } from "./hooks/useBooks"
+import type { CreateAuthorInput } from "./types/Authors"
+import type { CreateBookInput } from "./types/Book"
 
 const App = () => {
 	// State
 	const [activeTab, setActiveTab] = useState("books")
 	const [searchTerm, setSearchTerm] = useState("")
 
-	const handleAddAuthor = (author: Author) => {
-		console.log("New author:", author)
-		// Here you would typically:
-		// - Call your API to save the author
-		// - Update your state
-		// - Show a success message
+	const {
+		authors,
+		loading: authorsLoading,
+		error: authorsError,
+		refresh: refreshAuthors,
+		createAuthor,
+	} = useAuthors()
+	const {
+		books,
+		loading: booksLoading,
+		error: booksError,
+		refresh: refreshBooks,
+		createBook,
+	} = useBooks()
+
+	const handleAddAuthor = async (author: CreateAuthorInput) => {
+		try {
+			await createAuthor(author)
+			setActiveTab("authors")
+		} catch (error) {
+			console.error("Failed to add author", error)
+			alert(
+				error instanceof Error
+					? error.message
+					: "Something went wrong while adding the author."
+			)
+		}
 	}
 
-	const handleAddBook = (book: Book) => {
-		console.log("New book:", book)
-		// Here you would typically:
-		// - Call your API to save the book
-		// - Update your state
-		// - Show a success message
+	const handleAddBook = async (book: CreateBookInput) => {
+		try {
+			await createBook(book)
+			setActiveTab("books")
+		} catch (error) {
+			console.error("Failed to add book", error)
+			alert(
+				error instanceof Error
+					? error.message
+					: "Something went wrong while adding the book."
+			)
+		}
 	}
 
-	const getAuthorById = (authorId: number) => {
-		return staticAuthors.find((author) => author.id === authorId)
-	}
-
-	const getBookCountByAuthor = (authorId: number) => {
-		return staticBooks.filter((book) => book.authorId === authorId).length
-	}
-
-	const filteredBooks = staticBooks.filter((book) => {
-		const author = getAuthorById(book.authorId)
-		return (
-			book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			author?.name.toLowerCase().includes(searchTerm.toLowerCase())
-		)
-	})
-
-	const filteredAuthors = staticAuthors.filter((author) =>
-		author.name.toLowerCase().includes(searchTerm.toLowerCase())
+	const getAuthorById = useCallback(
+		(authorId: number) => authors.find((author) => author.id === authorId),
+		[authors]
 	)
+
+	const getBookCountByAuthor = useCallback(
+		(authorId: number) => books.filter((book) => book.authorId === authorId).length,
+		[books]
+	)
+
+	const normalizedSearch = searchTerm.trim().toLowerCase()
+
+	const filteredBooks = useMemo(() => {
+		if (!normalizedSearch) return books
+		return books.filter((book) => {
+			const author = authors.find((item) => item.id === book.authorId)
+			return (
+				book.title.toLowerCase().includes(normalizedSearch) ||
+				author?.name.toLowerCase().includes(normalizedSearch) ||
+				book.isbn.toLowerCase().includes(normalizedSearch)
+			)
+		})
+	}, [books, authors, normalizedSearch])
+
+	const filteredAuthors = useMemo(() => {
+		if (!normalizedSearch) return authors
+		return authors.filter((author) =>
+			author.name.toLowerCase().includes(normalizedSearch)
+		)
+	}, [authors, normalizedSearch])
 
 	return (
 		<div className="min-h-screen bg-gray-100">
@@ -77,12 +116,24 @@ const App = () => {
 			<main className="container mx-auto px-4 py-8">
 				{activeTab === "books" && (
 					<div className="space-y-4 flex flex-col flex-wrap">
-						{filteredBooks.length > 0 ? (
+						{booksLoading ? (
+							<div className="text-center py-12 text-gray-500">Loading books…</div>
+						) : booksError ? (
+							<div className="text-center py-12 text-gray-500 space-y-4">
+								<p>Failed to load books.</p>
+								<button
+									onClick={() => void refreshBooks()}
+									className="px-4 py-2 bg-blue-600 text-white rounded"
+								>
+									Try again
+								</button>
+							</div>
+						) : filteredBooks.length > 0 ? (
 							filteredBooks.map((book) => (
 								<BookCard
 									key={book.id}
 									book={book}
-									author={getAuthorById(book.authorId)!}
+									author={getAuthorById(book.authorId)}
 								/>
 							))
 						) : (
@@ -95,7 +146,21 @@ const App = () => {
 
 				{activeTab === "authors" && (
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-						{filteredAuthors.length > 0 ? (
+						{authorsLoading ? (
+							<div className="col-span-2 text-center py-12 text-gray-500">
+								Loading authors…
+							</div>
+						) : authorsError ? (
+							<div className="col-span-2 text-center py-12 text-gray-500 space-y-4">
+								<p>Failed to load authors.</p>
+								<button
+									onClick={() => void refreshAuthors()}
+									className="px-4 py-2 bg-blue-600 text-white rounded"
+								>
+									Try again
+								</button>
+							</div>
+						) : filteredAuthors.length > 0 ? (
 							filteredAuthors.map((author) => (
 								<AuthorCard
 									key={author.id}
@@ -114,12 +179,12 @@ const App = () => {
 				{activeTab === "add-author" && (
 					<AddAuthorForm
 						onSubmit={handleAddAuthor}
-						onCancel={() => console.log("Cancelled")}
+						onCancel={() => setActiveTab("authors")}
 					/>
 				)}
 
 				{activeTab === "add-book" && (
-					<AddBookForm authors={staticAuthors} onSubmit={handleAddBook} />
+					<AddBookForm authors={authors} onSubmit={handleAddBook} />
 				)}
 			</main>
 		</div>

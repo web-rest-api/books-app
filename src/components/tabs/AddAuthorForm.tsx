@@ -1,23 +1,23 @@
 import { useState, type FormEvent } from "react"
 import { countries } from "../../mockData/countries"
-import type { Author } from "../../types/Authors"
+import type { CreateAuthorInput } from "../../types/Authors"
 
 interface AddAuthorFormProps {
-	onSubmit: (author: Author) => void
+	onSubmit: (author: CreateAuthorInput) => Promise<void> | void
 	onCancel?: () => void
 }
 
 const AddAuthorForm = ({ onSubmit, onCancel }: AddAuthorFormProps) => {
-	const [formData, setFormData] = useState<Author>({
+	const [formData, setFormData] = useState<CreateAuthorInput>({
 		name: "",
 		bio: "",
 		birthYear: new Date().getFullYear(),
 		country: "",
 	})
 
-	const [errors, setErrors] = useState<Partial<Record<keyof Author, string>>>(
-		{}
-	)
+	const [errors, setErrors] = useState<
+		Partial<Record<keyof CreateAuthorInput, string>>
+	>({})
 
 	const handleChange = (
 		e: React.ChangeEvent<
@@ -27,33 +27,28 @@ const AddAuthorForm = ({ onSubmit, onCancel }: AddAuthorFormProps) => {
 		const { name, value } = e.target
 		setFormData((prev) => ({
 			...prev,
-			[name]: name === "birthYear" ? parseInt(value) || 0 : value,
+			[name]:
+				name === "birthYear"
+					? (value === "" ? null : parseInt(value) || 0)
+					: value,
 		}))
 		// Clear error when user starts typing
-		if (errors[name as keyof Author]) {
+		if (errors[name as keyof CreateAuthorInput]) {
 			setErrors((prev) => ({ ...prev, [name]: "" }))
 		}
 	}
 
 	const validate = (): boolean => {
-		const newErrors: Partial<Record<keyof Author, string>> = {}
+		const newErrors: Partial<Record<keyof CreateAuthorInput, string>> = {}
 
 		if (!formData.name.trim()) {
 			newErrors.name = "Name is required"
 		}
 
-		if (!formData.bio.trim()) {
-			newErrors.bio = "Bio is required"
-		}
-
-		if (!formData.country.trim()) {
-			newErrors.country = "Country is required"
-		}
-
 		if (
-			!formData.birthYear ||
-			formData.birthYear < 1000 ||
-			formData.birthYear > new Date().getFullYear()
+			formData.birthYear &&
+			(formData.birthYear < 1000 ||
+				formData.birthYear > new Date().getFullYear())
 		) {
 			newErrors.birthYear = "Please enter a valid birth year"
 		}
@@ -65,9 +60,9 @@ const AddAuthorForm = ({ onSubmit, onCancel }: AddAuthorFormProps) => {
 	const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
 		e.preventDefault()
 
-		if (validate()) {
-			onSubmit(formData)
-			// Reset form after successful submission
+		if (!validate()) return
+
+		void Promise.resolve(onSubmit(formData)).then(() => {
 			setFormData({
 				name: "",
 				bio: "",
@@ -75,7 +70,7 @@ const AddAuthorForm = ({ onSubmit, onCancel }: AddAuthorFormProps) => {
 				country: "",
 			})
 			setErrors({})
-		}
+		})
 	}
 
 	return (
@@ -113,12 +108,12 @@ const AddAuthorForm = ({ onSubmit, onCancel }: AddAuthorFormProps) => {
 						htmlFor="bio"
 						className="block text-sm font-medium text-gray-700 mb-1"
 					>
-						Biography *
+						Biography
 					</label>
 					<textarea
 						id="bio"
 						name="bio"
-						value={formData.bio}
+						value={formData.bio ?? ""}
 						onChange={handleChange}
 						rows={4}
 						className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none ${
@@ -139,13 +134,13 @@ const AddAuthorForm = ({ onSubmit, onCancel }: AddAuthorFormProps) => {
 							htmlFor="birthYear"
 							className="block text-sm font-medium text-gray-700 mb-1"
 						>
-							Birth Year *
+							Birth Year
 						</label>
 						<input
 							type="number"
 							id="birthYear"
 							name="birthYear"
-							value={formData.birthYear}
+							value={formData.birthYear ?? ""}
 							onChange={handleChange}
 							min="1000"
 							max={new Date().getFullYear()}
@@ -165,12 +160,12 @@ const AddAuthorForm = ({ onSubmit, onCancel }: AddAuthorFormProps) => {
 							htmlFor="country"
 							className="block text-sm font-medium text-gray-700 mb-1"
 						>
-							Country *
+							Country
 						</label>
 						<select
 							id="country"
 							name="country"
-							value={formData.country}
+							value={formData.country ?? ""}
 							onChange={handleChange}
 							className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
 								errors.country ? "border-red-500" : "border-gray-300"
