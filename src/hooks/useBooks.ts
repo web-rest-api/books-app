@@ -39,8 +39,20 @@ export const useBooks = () => {
 	const importBookByIsbn = useCallback(async (isbn: string) => {
 		const imported = await booksService.importByIsbn(isbn)
 		setBooks((prev) => {
-			const exists = prev.some((book) => book.id === imported.id)
-			return exists ? prev : [...prev, imported]
+			const index = prev.findIndex((book) => book.id === imported.id)
+			if (index === -1) {
+				return [...prev, imported]
+			}
+			const current = prev[index]
+			const merged: Book = {
+				...current,
+				...imported,
+				description: imported.description ?? current.description ?? null,
+				coverUrl: imported.coverUrl ?? current.coverUrl ?? null,
+			}
+			const copy = [...prev]
+			copy[index] = merged
+			return copy
 		})
 		return imported
 	}, [])

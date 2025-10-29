@@ -16,29 +16,40 @@ This is a full-stack project that demonstrates the integration of a React TypeSc
 ## Project Structure
 
 ```
-books-lists/
+library-app/
 ├── src/
-│   ├── components/           # Reusable UI components
-│   │   ├── AuthorCard.tsx    # Displays author information
-│   │   ├── BookCard.tsx      # Displays book information
-│   │   └── SearchBar.tsx     # Search input component
-│   ├── mockData/             # Static data for development
-│   │   └── staticData.ts     # Books and authors mock data
-│   ├── services/             # API service layers (to be implemented)
-│   ├── types/                # TypeScript type definitions (to be implemented)
+│   ├── components/           # Presentation components and shared states
+│   │   ├── AuthorCard.tsx
+│   │   ├── BookCard.tsx
+│   │   ├── LoadingState.tsx
+│   │   └── ErrorState.tsx
+│   ├── components/tabs/      # Forms rendered in tab views
+│   │   ├── AddAuthorForm.tsx
+│   │   └── AddBookForm.tsx
+│   ├── hooks/                # Custom hooks wrapping API services
+│   │   ├── useAuthors.ts
+│   │   └── useBooks.ts
+│   ├── mockData/             # Legacy mock data kept for reference
+│   ├── service/              # API service abstractions
+│   │   ├── authorService.ts
+│   │   ├── booksService.ts
+│   │   └── googleBooksService.ts
+│   ├── types/                # TypeScript contracts shared by UI & services
+│   │   ├── Authors.ts
+│   │   └── Book.ts
 │   ├── App.tsx               # Main application component
-│   ├── main.tsx              # Application entry point
-│   └── index.css             # Global styles with Tailwind
+│   ├── main.tsx              # Vite entry point
+│   └── index.css             # Tailwind base styles
 ├── public/                   # Static assets
 ├── package.json              # Dependencies and scripts
 ├── tsconfig.json             # TypeScript configuration
-├── vite.config.js            # Vite build configuration
+├── vite.config.ts            # Vite build configuration
 └── README.md                 # This file
 ```
 
 ## Current Features
 
-### Phase 1: Static UI (Complete)
+### Phase 1: Static UI
 
 - ✅ Component-based architecture
 - ✅ Tab navigation between Books and Authors views
@@ -46,16 +57,15 @@ books-lists/
 - ✅ Responsive design with Tailwind CSS
 - ✅ Static mock data for development
 
-### Phase 2: API Integration (In Progress)
-
+### Phase 2: API Integration
 - ✅ Service layer for C# backend authors & books endpoints
 - ✅ Google Books API suggestions in the add-book form
 - ✅ Loading and error states for network requests
 - ✅ Custom hooks for consuming backend services
-- ⏳ Extract reusable loading/error components for consistency
-- ⏳ Document environment variables for local/hosted deployments
+- ✅ Shared loading/error components for consistent UX
+- ✅ Documented environment variables for local/hosted deployments
 
-### Phase 3: Advanced Features (Future)
+### Phase 3: Advanced Features
 
 - Add book details page
 - Implement filtering and sorting
@@ -72,7 +82,7 @@ books-lists/
 - Tailwind CSS - Utility-first CSS framework
 - Lucide React - Icon library
 
-### Backend (Student Project)
+### Backend 
 
 - C# / ASP.NET Core - RESTful API
 - Entity Framework - Database ORM
@@ -91,47 +101,40 @@ books-lists/
 
 ### Installation
 
-1. Fork the repository and clone it to your local machine.
+1. Clone the repository to your local machine.
 2. Install dependencies: `npm install`
-3. Start the development server: `npm run dev`
-4. Open the application in your browser at `http://localhost:5173`
+3. Configure environment variables (see below).
+4. Start the development server: `npm run dev`
+5. Open the application in your browser at `http://localhost:5173`
 
-## Backend Development (C# Team)
+### Configuration
 
-## Frontend Development (React Team)
+Create a `.env.local` file in the project root with the following values:
 
-### Component Structure
+```
+VITE_API_BASE_URL=https://libraryapp-api-danango-hnuhu9c4buboma9.azurewebsites.net
+VITE_GOOGLE_BOOKS_API_KEY=your_optional_google_books_key
+```
 
-- Proper component separation and organization
-- TypeScript interfaces for all props
-- Reusable components with clear responsibilities
-- Responsive design with Tailwind CSS
+- `VITE_API_BASE_URL` should point to the live ASP.NET Core API. Replace the sample URL if you are running your own backend instance locally or on another host.
+- `VITE_GOOGLE_BOOKS_API_KEY` is optional. Leaving it empty still allows unauthenticated requests, but adding a key increases quota.
 
-### State Management
+#### Data Flow
 
-- Create React Context for global state
-- Implement custom hooks for data fetching
-- Proper state updates and side effects
+1. On load, the frontend fetches authors (`GET /authors`) and books (`GET /books`) from the configured API.
+2. Adding an author submits a `POST /authors` request.
+3. Adding a book submits `POST /books`, then the app automatically calls `POST /books/import/isbn/{isbn}` to enrich the record with metadata the backend can source.
+4. While typing a title, the Google Books API provides suggestions that can prefill the form.
+5. Note: The hosted API runs on Azure’s free tier, so it can take 15–30 seconds to wake up after a period of inactivity. If requests fail at first, wait a moment and retry.
 
-### API Integration
+## Development Notes
 
-- Service layer for C# backend API (authors, books, ISBN import)
-- Google Books API for enriched data and form autofill
-- Loading states, retry flows, and error handling
-- Proper async/await patterns with custom hooks
-
-### User Interface
-
-- Clean, intuitive design
-- Responsive layout (mobile and desktop)
-- Smooth transitions and interactions
-- Accessibility considerations
+- Components are written in TypeScript with Tailwind utility classes for styling.
+- Data access is centralized in `src/service` and consumed via the custom hooks in `src/hooks`.
+- Loading and error UI states are handled by shared components to keep screens consistent.
+- Google Books title suggestions run client-side; backend metadata enrichment happens through the Azure API.
 
 ## API Endpoints Documentation
-
-```
-C# Backend (To Be Implemented by Students)
-```
 
 ### Books Endpoints
 
@@ -192,12 +195,9 @@ GET /volumes?q=isbn:{ISBN}
 
 ## Support
 
-### For questions or issues:
+If you run into issues:
 
-- Check the documentation first
-- Review error messages carefully
-- Ask your instructor or teaching assistant
-- Collaborate with your team members
-
-Good luck with your project!
-**Remember:** learning to debug and problem-solve is just as important as writing code.
+- Verify your environment variables are correct and the backend URL is reachable.
+- Check the browser console for CORS or network errors.
+- Review the API responses using a tool like `curl` or Postman to confirm the backend is healthy.
+- Feel free to open an issue if you discover a bug or have a feature request.

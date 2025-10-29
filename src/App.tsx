@@ -3,6 +3,8 @@ import { BookOpen } from "lucide-react"
 import BookCard from "./components/BookCard"
 import AuthorCard from "./components/AuthorCard"
 import SearchBar from "./components/SearchBar"
+import ErrorState from "./components/ErrorState"
+import LoadingState from "./components/LoadingState"
 import AddAuthorForm from "./components/tabs/AddAuthorForm"
 import AddBookForm from "./components/tabs/AddBookForm"
 
@@ -30,6 +32,7 @@ const App = () => {
 		error: booksError,
 		refresh: refreshBooks,
 		createBook,
+		importBookByIsbn,
 	} = useBooks()
 
 	const handleAddAuthor = async (author: CreateAuthorInput) => {
@@ -48,7 +51,12 @@ const App = () => {
 
 	const handleAddBook = async (book: CreateBookInput) => {
 		try {
-			await createBook(book)
+			const created = await createBook(book)
+			try {
+				await importBookByIsbn(created.isbn)
+			} catch (importError) {
+				console.warn("Book created but metadata import failed", importError)
+			}
 			setActiveTab("books")
 		} catch (error) {
 			console.error("Failed to add book", error)
@@ -117,17 +125,9 @@ const App = () => {
 				{activeTab === "books" && (
 					<div className="space-y-4 flex flex-col flex-wrap">
 						{booksLoading ? (
-							<div className="text-center py-12 text-gray-500">Loading books…</div>
+							<LoadingState message="Loading books…" />
 						) : booksError ? (
-							<div className="text-center py-12 text-gray-500 space-y-4">
-								<p>Failed to load books.</p>
-								<button
-									onClick={() => void refreshBooks()}
-									className="px-4 py-2 bg-blue-600 text-white rounded"
-								>
-									Try again
-								</button>
-							</div>
+							<ErrorState message="Failed to load books." onRetry={refreshBooks} />
 						) : filteredBooks.length > 0 ? (
 							filteredBooks.map((book) => (
 								<BookCard
@@ -147,19 +147,13 @@ const App = () => {
 				{activeTab === "authors" && (
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 						{authorsLoading ? (
-							<div className="col-span-2 text-center py-12 text-gray-500">
-								Loading authors…
-							</div>
+							<LoadingState className="col-span-2" message="Loading authors…" />
 						) : authorsError ? (
-							<div className="col-span-2 text-center py-12 text-gray-500 space-y-4">
-								<p>Failed to load authors.</p>
-								<button
-									onClick={() => void refreshAuthors()}
-									className="px-4 py-2 bg-blue-600 text-white rounded"
-								>
-									Try again
-								</button>
-							</div>
+							<ErrorState
+								className="col-span-2"
+								message="Failed to load authors."
+								onRetry={refreshAuthors}
+							/>
 						) : filteredAuthors.length > 0 ? (
 							filteredAuthors.map((author) => (
 								<AuthorCard
